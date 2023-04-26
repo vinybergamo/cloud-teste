@@ -1,18 +1,17 @@
 version: '3'
 
 services:
-
   api:
     build:
       context: .
       dockerfile: Dockerfile
-    image: nodejs-api
+    image: api
     container_name: api
     restart: unless-stopped
     ports:
       - 3000:3000
     networks:
-      - nodejs-network
+      - node-network
 
   nginx-setup:
     image: nginx:mainline-alpine
@@ -20,17 +19,17 @@ services:
     restart: unless-stopped
     ports:
       - 80:80
-    depends_on:
-      - api
     volumes:
       - ./nginx/setup:/etc/nginx/conf.d
       - web-root:/var/www/html
+    depends_on:
+      - api
     networks:
-      - nodejs-network
+      - node-network
 
-  certbot-setup:
+  certbot:
     image: certbot/certbot
-    container_name: certbot_setup
+    container_name: certbot
     volumes:
       - certbot-etc:/etc/letsencrypt
       - certbot-var:/var/lib/letsencrypt
@@ -38,6 +37,8 @@ services:
     depends_on:
       - nginx-setup
     command: certonly --webroot --webroot-path=/var/www/html --email vinybergamo@gmail.com --agree-tos --no-eff-email -d docker.vinybergamo.com
+    networks:
+      - node-network
 
   nginx-production:
     image: nginx:mainline-alpine
@@ -45,26 +46,29 @@ services:
     restart: unless-stopped
     ports:
       - 443:443
-    depends_on:
-      - nginx-setup
-      - api
-    networks:
-      - nodejs-network
     volumes:
-      - ./nginx/production:/etc/nginx/conf.d
       - certbot-etc:/etc/letsencrypt
       - certbot-var:/var/lib/letsencrypt
+      - web-root:/var/www/html
       - dhparam:/etc/ssl/certs
+      - ./nginx/production:/etc/nginx/conf.d
+    depends_on:
+      - api
+      - nginx-setup
+    networks:
+      - node-network
 
 volumes:
   certbot-etc:
   certbot-var:
+
   web-root:
     driver: local
     driver_opts:
       type: none
       device: ./
       o: bind
+
   dhparam:
     driver: local
     driver_opts:
@@ -73,5 +77,5 @@ volumes:
       o: bind
 
 networks:
-  nodejs-network:
+  node-network:
     driver: bridge
