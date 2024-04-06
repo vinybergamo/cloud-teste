@@ -1,6 +1,7 @@
 {
   "name": "aula",
   "scripts": {
+    "build": "echo 'build'",
     "start": "node ./src/index.js"
   },
   "dependencies": {
